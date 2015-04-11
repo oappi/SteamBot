@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -25,7 +25,7 @@ namespace SteamBot
             new List<Bot>();
             botProcs = new List<RunningBot>();
         }
-
+	
         public Configuration ConfigObject { get; private set; }
 
         /// <summary>
@@ -49,10 +49,18 @@ namespace SteamBot
 
             if (ConfigObject == null)
                 return false;
-
+            
+            mainLog = new Log(ConfigObject.MainLog, null, Log.LogLevel.Debug, Log.LogLevel.Debug);
+           
+            if (IsRunningOnMono() && ConfigObject.UseSeparateProcesses)  //mono to version 3.8 does not seem to support this
+			{
+				mainLog.Info("Mono detected with UseSeparateProcesses as true, disabling" );
+				ConfigObject.UseSeparateProcesses = false;
+			}
+			
             useSeparateProcesses = ConfigObject.UseSeparateProcesses;
 
-            mainLog = new Log(ConfigObject.MainLog, null, Log.LogLevel.Debug, Log.LogLevel.Debug);
+           
 
             for (int i = 0; i < ConfigObject.Bots.Length; i++)
             {
@@ -68,7 +76,13 @@ namespace SteamBot
 
             return true;
         }
-
+        //Checks if steambot is been run on Mono
+       	private static bool IsRunningOnMono ()
+		{
+			return Type.GetType ("Mono.Runtime") != null;
+		}
+       
+       
         /// <summary>
         /// Starts the bots that have been configured.
         /// </summary>
@@ -239,7 +253,8 @@ namespace SteamBot
             Type controlClass = Type.GetType(bot.BotControlClass);
 
             if (controlClass == null)
-                throw new ArgumentException("Configured control class type was null. You probably named it wrong in your configuration file.", "bot");
+                throw new ArgumentException("Configured control class type was null. You probably named it wrong in your configuration file.", 
+"bot");
 
             return (UserHandler)Activator.CreateInstance(
                     controlClass, new object[] { bot, sid });
